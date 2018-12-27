@@ -1,4 +1,3 @@
-# from __future__ import print_function
 import os
 import argparse
 import torch
@@ -41,12 +40,13 @@ class VAE(nn.Module):
         super(VAE, self).__init__()
 
         self.conv1 = nn.Conv2d(3, 6, 3, padding=1)
-        self.fc1 = nn.Linear(6 * 16 * 16, 400)
         self.pool = nn.MaxPool2d(2, 2)
-        self.fc21 = nn.Linear(400, 30)
-        self.fc22 = nn.Linear(400, 30)
-        self.fc3 = nn.Linear(30, 400)
-        self.fc4 = nn.Linear(400, 3 * 1024)
+        self.fc1 = nn.Linear(6 * 16 * 16, 400)
+        self.fc21 = nn.Linear(400, 40)
+        self.fc22 = nn.Linear(400, 40)
+        self.fc3 = nn.Linear(40, 400)
+        self.fc4 = nn.Linear(400, 3 * 16 * 16)
+        self.deconv1 = nn.ConvTranspose2d(3, 3, kernel_size=4, stride=2, padding=1)
 
     def encode(self, x):
         x = self.pool(self.conv1(x))
@@ -60,10 +60,10 @@ class VAE(nn.Module):
 
     def decode(self, z):
         h3 = F.relu(self.fc3(z))
-        return torch.sigmoid(self.fc4(h3))
+        return torch.sigmoid(self.deconv1(((self.fc4(h3)).view(-1, 3, 16, 16))))
 
     def forward(self, x):
-        mu, logvar = self.encode(x)#.view(-1, 1024)
+        mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
         return self.decode(z), mu, logvar
 
@@ -102,7 +102,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 def loss_function(recon_x, x, mu, logvar):
     # print(x.shape)
     # print(recon_x.shape)
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, 1024), reduction='sum')
+    BCE = F.binary_cross_entropy(recon_x.view(-1, 1024), x.view(-1, 1024), reduction='sum')
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -159,7 +159,7 @@ if __name__ == "__main__":
         train(epoch)
         test(epoch)
         with torch.no_grad():
-            sample = torch.randn(64, 30).to(device)
+            sample = torch.randn(64, 40).to(device)
             sample = model.decode(sample).cpu()
             save_image(sample.view(64, 3, 32, 32),
                        'results/sample_' + str(epoch) + '.png')
