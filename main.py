@@ -10,7 +10,7 @@ from torchvision.utils import save_image
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=20, metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
@@ -67,32 +67,6 @@ class VAE(nn.Module):
         z = self.reparameterize(mu, logvar)
         return self.decode(z), mu, logvar
 
-    def _conv(self, channel_size, kernel_num):
-        return nn.Sequential(
-            nn.Conv2d(
-                channel_size, kernel_num,
-                kernel_size=4, stride=2, padding=1,
-            ),
-            nn.BatchNorm2d(kernel_num),
-            nn.ReLU(),
-        )
-
-    def _deconv(self, channel_num, kernel_num):
-        return nn.Sequential(
-            nn.ConvTranspose2d(
-                channel_num, kernel_num,
-                kernel_size=4, stride=2, padding=1,
-            ),
-            nn.BatchNorm2d(kernel_num),
-            nn.ReLU(),
-        )
-
-    def _linear(self, in_size, out_size, relu=True):
-        return nn.Sequential(
-            nn.Linear(in_size, out_size),
-            nn.ReLU(),
-        ) if relu else nn.Linear(in_size, out_size)
-
 
 model = VAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
@@ -100,8 +74,6 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
-    # print(x.shape)
-    # print(recon_x.shape)
     BCE = F.binary_cross_entropy(recon_x.view(-1, 1024), x.view(-1, 1024), reduction='sum')
 
     # see Appendix B from VAE paper:
